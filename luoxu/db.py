@@ -7,6 +7,7 @@ import datetime
 
 import asyncpg
 
+from .db_patch import PostgreStorePatch
 from .util import format_name, UpdateLoaded
 from .indexing import text_to_query, format_msg
 from .types import SearchQuery, GroupNotFound
@@ -15,10 +16,11 @@ from .ocr import OCRService
 
 logger = logging.getLogger(__name__)
 
-class PostgreStore:
+class PostgreStore(PostgreStorePatch):
   SEARCH_LIMIT = 50
 
   def __init__(self, config: dict[str, Any]) -> None:
+    super().__init__()
     self.address = config['url']
     first_year = config.get('first_year', 2016)
     if ocr_url := config.get('ocr_url'):
@@ -71,6 +73,8 @@ class PostgreStore:
         t = randint(1, 50) / 10
         logger.warning('deadlock detected, retry in %.1fs', t)
         await asyncio.sleep(t)
+
+    self.run_msg_ocr_handlers(data)
 
   async def get_group(self, conn, group_id: int):
     sql = '''\
